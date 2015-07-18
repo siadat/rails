@@ -190,16 +190,17 @@ module ActiveRecord
 
       relation = relation.reorder(batch_order).limit(of)
       relation = apply_limits(relation, begin_at, end_at)
+      batch_relation = relation
 
       loop do
         if load
-          records = relation.to_a
+          records = batch_relation.to_a
           ids = records.map(&:id)
           relation_yielded = self.where(primary_key => ids).reorder(batch_order)
           relation_yielded.instance_variable_set :@records, records
           relation_yielded.instance_variable_set :@loaded, true
         else
-          ids = relation.pluck(primary_key)
+          ids = batch_relation.pluck(primary_key)
           relation_yielded = self.where(primary_key => ids).reorder(batch_order)
         end
 
@@ -211,7 +212,7 @@ module ActiveRecord
         yield relation_yielded
 
         break if ids.length < of
-        relation = relation.where(table[primary_key].gt(primary_key_offset))
+        batch_relation = relation.where(table[primary_key].gt(primary_key_offset))
       end
     end
 
