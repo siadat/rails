@@ -204,11 +204,7 @@ module ActiveRecord
       loop do
         if load
           records = relation.to_a
-          begin
-            ids = records.map{|r| r.id}
-          rescue
-            raise "Primary key not included in the custom select clause" unless primary_key_offset
-          end
+          ids = records.map(&:id)
           relation_yielded = self.where(primary_key => ids).reorder(batch_order)
           relation_yielded.instance_variable_set :@records, records
           relation_yielded.instance_variable_set :@loaded, true
@@ -218,6 +214,7 @@ module ActiveRecord
         end
 
         primary_key_offset = ids.last
+        raise "Primary key not included in the custom select clause" unless ids.none? || primary_key_offset
         break if ids.none?
         yield relation_yielded
         break if ids.length < of
