@@ -23,7 +23,7 @@ class EachTest < ActiveRecord::TestCase
 
   def test_each_should_not_return_query_chain_and_execute_two_query
     assert_deprecated do
-      assert_queries(2) do
+      assert_queries(1) do
         result = Post.find_each(:batch_size => 100000){ }
         assert_nil result
       end
@@ -32,7 +32,7 @@ class EachTest < ActiveRecord::TestCase
 
   def test_each_should_return_an_enumerator_if_no_block_is_present
     assert_deprecated do
-      assert_queries(1 + 1) do
+      assert_queries(1) do
         Post.find_each(:batch_size => 100000).with_index do |post, index|
           assert_kind_of Post, post
           assert_kind_of Integer, index
@@ -64,7 +64,7 @@ class EachTest < ActiveRecord::TestCase
 
   def test_each_should_execute_if_id_is_in_select
     assert_deprecated do
-      assert_queries(6 + 1) do
+      assert_queries(6) do
         Post.select("id, title, type").find_each(:batch_size => 2) do |post|
           assert_kind_of Post, post
         end
@@ -107,14 +107,14 @@ class EachTest < ActiveRecord::TestCase
   end
 
   def test_with_batches_should_not_return_query_chain_and_execute_two_query
-    assert_queries(2) do
+    assert_queries(1) do
       result = Post.with_batches(of: 100000){ }
       assert_nil result
     end
   end
 
   def test_with_batches_should_return_an_enumerator_if_no_block_is_present
-    assert_queries(1 + 1) do
+    assert_queries(1) do
       Post.with_batches(of: 100000).with_index do |post, index|
         assert_kind_of Post, post
         assert_kind_of Integer, index
@@ -140,7 +140,7 @@ class EachTest < ActiveRecord::TestCase
   end
 
   def test_with_batches_should_execute_if_id_is_in_select
-    assert_queries(6 + 1) do
+    assert_queries(6) do
       Post.select("id, title, type").with_batches(of: 2) do |post|
         assert_kind_of Post, post
       end
@@ -208,7 +208,7 @@ class EachTest < ActiveRecord::TestCase
     end
 
     assert_deprecated do
-      assert_queries(2) do
+      assert_queries(1) do
         Post.find_in_batches(:batch_size => @total + 1) {|batch| assert_kind_of Array, batch }
       end
     end
@@ -371,7 +371,7 @@ class EachTest < ActiveRecord::TestCase
       Post.in_batches(of: @total) {|relation| assert_kind_of ActiveRecord::Relation, relation }
     end
 
-    assert_queries(1 + 1) do
+    assert_queries(1) do
       Post.in_batches(of: @total + 1) {|relation| assert_kind_of ActiveRecord::Relation, relation }
     end
   end
