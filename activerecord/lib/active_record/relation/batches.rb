@@ -47,11 +47,6 @@ module ActiveRecord
     # NOTE: You can't set the limit either, that's used to control
     # the batch sizes.
     def find_each(begin_at: nil, end_at: nil, batch_size: 1000, start: nil)
-      ActiveSupport::Deprecation.warn(<<-MSG.squish)
-        The #find_each method is deprecated.
-        Please use #in_batches instead with the +:load+ option set to true.
-      MSG
-
       if start
         begin_at = start
         ActiveSupport::Deprecation.warn(<<-MSG.squish)
@@ -111,11 +106,6 @@ module ActiveRecord
     # NOTE: You can't set the limit either, that's used to control
     # the batch sizes.
     def find_in_batches(begin_at: nil, end_at: nil, batch_size: 1000, start: nil)
-      ActiveSupport::Deprecation.warn(<<-MSG.squish)
-        The #find_in_batches method is deprecated.
-        Please use #in_batches instead with the +:load+ option set to true.
-      MSG
-
       if start
         begin_at = start
         ActiveSupport::Deprecation.warn(<<-MSG.squish)
@@ -213,10 +203,13 @@ module ActiveRecord
           relation_yielded = self.where(primary_key => ids).reorder(batch_order)
         end
 
+        break if ids.empty?
+
         primary_key_offset = ids.last
-        raise "Primary key not included in the custom select clause" unless ids.none? || primary_key_offset
-        break if ids.none?
+        raise "Primary key not included in the custom select clause" unless primary_key_offset
+
         yield relation_yielded
+
         break if ids.length < of
         relation = relation.where(table[primary_key].gt(primary_key_offset))
       end
