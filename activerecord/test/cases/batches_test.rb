@@ -354,6 +354,27 @@ class EachTest < ActiveRecord::TestCase
     end
   end
 
+  def test_in_batches_relations_should_not_overlap_with_each_other
+    posts_found = []
+    Post.in_batches(of: 2, load: true) do |relation|
+      relation.to_a.each do |post|
+        assert_not posts_found.include?(post)
+        posts_found << post
+      end
+    end
+  end
+
+  def test_in_batches_relations_update_all_should_not_affect_matching_records_in_other_batches
+    Post.update_all(comments_count: 0)
+    post = Post.last
+    post.update_attributes(comments_count: 1)
+
+    Post.in_batches(of: 2) do |posts|
+      posts.where('comments_count >= 1').update_all('comments_count = comments_count + 1')
+    end
+    assert_equal 2, post.reload.comments_count # incremented only once
+  end
+
   def test_in_batches_should_return_a_relation_with_ids_in_range
     Post.in_batches(of: 2, load: true) do |relation|
       assert_equal relation.pluck(:id), Array(relation.where_values_hash['id'])
