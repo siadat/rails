@@ -171,8 +171,8 @@ module ActiveRecord
     # NOTE: If you are going to iterate through each record, you should set
     # +:load+ to true in order to reduce the number of queries. For example:
     #
-    #   Person.in_batches(load: true).each do |group|
-    #     group.each(&:party_all_night!)
+    #   Person.in_batches(load: true).each do |batch|
+    #     batch.each(&:party_all_night!)
     #   end
     #
     # NOTE: It's not possible to set the order. That is automatically set to
