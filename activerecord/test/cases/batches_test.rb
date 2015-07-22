@@ -355,13 +355,24 @@ class EachTest < ActiveRecord::TestCase
   end
 
   def test_in_batches_relations_should_not_overlap_with_each_other
-    posts_found = []
+    seen_posts = []
     Post.in_batches(of: 2, load: true) do |relation|
       relation.to_a.each do |post|
-        assert_not posts_found.include?(post)
-        posts_found << post
+        assert_not seen_posts.include?(post)
+        seen_posts << post
       end
     end
+  end
+
+  def test_in_batches_relations_with_condition_should_not_overlap_with_each_other
+    seen_posts = []
+    author_id = Post.first.author_id
+    posts_by_author = Post.where(author_id: author_id)
+    Post.in_batches(of: 2) do |batch|
+      seen_posts += batch.where(author_id: author_id)
+    end
+
+    assert_equal posts_by_author.pluck(:id).sort, seen_posts.map(&:id).sort
   end
 
   def test_in_batches_relations_update_all_should_not_affect_matching_records_in_other_batches
