@@ -261,11 +261,11 @@ class EachTest < ActiveRecord::TestCase
 
   def test_in_batches_shouldnt_execute_query_unless_needed
     assert_queries(1 + 1) do
-      Post.in_batches(of: @total) {|relation| assert_kind_of ActiveRecord::Relation, relation }
+      Post.in_batches(of: @total) { |relation| assert_kind_of ActiveRecord::Relation, relation }
     end
 
     assert_queries(1) do
-      Post.in_batches(of: @total + 1) {|relation| assert_kind_of ActiveRecord::Relation, relation }
+      Post.in_batches(of: @total + 1) { |relation| assert_kind_of ActiveRecord::Relation, relation }
     end
   end
 

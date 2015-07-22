@@ -137,9 +137,9 @@ module ActiveRecord
     # If you do not provide a block to #in_batches, it will return an Enumerator
     # which yields ActiveRecord::Relation objects for chaining with other methods:
     #
-    #   Person.in_batches.with_index do |relation, batch|
-    #     puts "Processing relation ##{batch}"
-    #     relation.each{|relation| relation.delete_all }
+    #   Person.in_batches.with_index do |relation, batch_index|
+    #     puts "Processing relation ##{batch_index}"
+    #     relation.each { |relation| relation.delete_all }
     #   end
     #
     # ==== Options
@@ -149,32 +149,39 @@ module ActiveRecord
     # * <tt>:end_at</tt> - Specifies the primary key value to end at, inclusive of the value.
     #
     # This is especially useful if you want to work with the
-    # ActiveRecord::Relation object instead of the individual records.
-    #
-    # This is especially useful if you want multiple workers dealing with
-    # the same processing queue. You can make worker 1 handle all the records
-    # between id 0 and 10,000 and worker 2 handle from 10,000 and beyond
-    # (by setting the +:begin_at+ and +:end_at+ option on each worker).
+    # ActiveRecord::Relation object instead of the array of records, or if
+    # you want multiple workers dealing with the same processing queue. You can
+    # make worker 1 handle all the records between id 0 and 10,000 and worker 2
+    # handle from 10,000 and beyond (by setting the +:begin_at+ and +:end_at+
+    # option on each worker).
     #
     #   # Let's process the next 2000 records
     #   Person.in_batches(of: 2000, begin_at: 2000) do |relation|
     #     relation.update_all(cool: true)
     #   end
     #
+    # An example of calling where query method on the relation:
+    #
+    #   Person.in_batches do |relation|
+    #     relation.update_all('age = age + 1')
+    #     relation.where('age > 21').update_all(should_party: true)
+    #     relation.where('age <= 21').delete_all
+    #   end
+    #
     # NOTE: If you are going to iterate through each record, you should set
     # +:load+ to true in order to reduce the number of queries. For example:
     #
-    #   Person.in_batches(load: true).each do |batch|
-    #     batch.each(&:touch)
+    #   Person.in_batches(load: true).each do |group|
+    #     group.each(&:party_all_night!)
     #   end
     #
     # NOTE: It's not possible to set the order. That is automatically set to
-    # ascending on the primary key ("id ASC") to make the batch ordering
-    # work. This also means that this method only works when the primary key is
-    # orderable (e.g. an integer or string).
+    # ascending on the primary key ("id ASC") to make the batch ordering is
+    # consistent. Therefore the primary key must be orderable, e.g an integer
+    # or a string.
     #
-    # NOTE: You can't set the limit either, that's used to control
-    # the batch sizes.
+    # NOTE: You can't set the limit either, that's used to control the batch
+    # sizes.
     def in_batches(of: 1000, begin_at: nil, end_at: nil, load: false)
       relation = self
       unless block_given?
