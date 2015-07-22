@@ -365,14 +365,14 @@ class EachTest < ActiveRecord::TestCase
   end
 
   def test_in_batches_relations_update_all_should_not_affect_matching_records_in_other_batches
-    People.update_all(followers_count: 0)
-    person = People.last
-    person.update_attributes(followers_count: 1)
+    Post.update_all(author_id: 0)
+    person = Post.last
+    person.update_attributes(author_id: 1)
 
-    People.in_batches(of: 2) do |batch|
-      batch.where('followers_count >= 1').update_all('followers_count = followers_count + 1')
+    Post.in_batches(of: 2) do |batch|
+      batch.where('author_id >= 1').update_all('author_id = author_id + 1')
     end
-    assert_equal 2, person.reload.followers_count # incremented only once
+    assert_equal 2, person.reload.author_id # incremented only once
   end
 
   def test_in_batches_should_return_a_relation_with_ids_in_range
