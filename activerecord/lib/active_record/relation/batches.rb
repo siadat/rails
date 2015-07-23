@@ -1,3 +1,4 @@
+require "active_record/relation/batches_delegator"
 module ActiveRecord
   module Batches
     # Looping through a collection of records from the database
@@ -221,6 +222,12 @@ module ActiveRecord
         break if ids.length < of
         batch_relation = relation.where(table[primary_key].gt(primary_key_offset))
       end
+    end
+
+    def in_batches_delegator(of: 1000, begin_at: nil, end_at: nil)
+      delegator = BatchesDelegator.new(of: of, begin_at: begin_at, end_at: end_at, relation: self)
+      return delegator.map { |relation| yield relation } if block_given?
+      delegator
     end
 
     private

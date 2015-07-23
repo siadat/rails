@@ -11,6 +11,68 @@ class EachTest < ActiveRecord::TestCase
     Post.count('id') # preheat arel's table cache
   end
 
+  def test_in_batches_delegator_should_not_execute_any_query
+    assert_queries(0) do
+      assert_kind_of ActiveRecord::Batches::BatchesDelegator, Post.in_batches_delegator(of: 2)
+    end
+  end
+
+  def test_in_batches_delegator_should_yield_relation_if_block_given
+    assert_queries(6) do
+      Post.in_batches_delegator(of: 2) do |relation|
+        assert_kind_of ActiveRecord::Relation, relation
+      end
+    end
+  end
+
+  def test_in_batches_delegator_should_be_enumerable_if_no_block_given
+    assert_queries(6) do
+      Post.in_batches_delegator(of: 2).each do |relation|
+        assert_kind_of ActiveRecord::Relation, relation
+      end
+    end
+    assert_queries(6) do
+      Post.in_batches_delegator(of: 2).map do |relation|
+        assert_kind_of ActiveRecord::Relation, relation
+      end
+    end
+  end
+
+  def test_in_batches_delegator_each_record_should_yield_record_if_no_block_given
+    assert_queries(6) do
+      Post.in_batches_delegator(of: 2).each_record do |post|
+        assert post.title.present?
+        assert_kind_of Post, post
+      end
+    end
+  end
+
+  def test_in_batches_delegator_each_record_should_return_enumerator_if_no_block_given
+    assert_queries(6) do
+      Post.in_batches_delegator(of: 2).each_record.with_index do |post, i|
+        assert post.title.present?
+        assert_kind_of Post, post
+      end
+    end
+  end
+
+  def test_in_batches_delegator_update_all_affect_all_records
+    assert_queries(6 + 6) do
+      # 6 selects, 6 updates
+      Post.in_batches_delegator(of: 2).update_all(title: "updated-title")
+    end
+    assert_equal Post.all.pluck(:title), ["updated-title"] * Post.count
+  end
+
+  def test_in_batches_delegator_delete_all_should_not_delete_records_in_other_batches
+    not_deleted_count = Post.where('id <= 2').count
+    Post.where('id > 2').in_batches_delegator(of: 2).delete_all
+    assert_equal 0, Post.where('id > 2').count
+    assert_equal not_deleted_count, Post.count
+  end
+
+
+
   def test_each_should_execute_one_query_per_batch
     assert_queries(@total + 1) do
       Post.find_each(:batch_size => 1) do |post|
