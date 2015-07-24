@@ -1,4 +1,5 @@
-require "active_record/relation/batches_delegator"
+require "active_record/relation/batches/batches_delegator"
+
 module ActiveRecord
   module Batches
     # Looping through a collection of records from the database
@@ -128,20 +129,28 @@ module ActiveRecord
       end
     end
 
+    # Returns a BatchesDelegator object to work with batches of records.
+    #
     # Yields ActiveRecord::Relation objects to work with a batch of records.
     #
     #   Person.where("age > 21").in_batches do |relation|
     #     sleep(50)
-    #     relation.update_all(cool: true)
+    #     relation.update_all(awesome: true)
     #   end
     #
-    # If you do not provide a block to #in_batches, it will return an Enumerator
-    # which yields ActiveRecord::Relation objects for chaining with other methods:
+    # If you do not provide a block to #in_batches, it will return a
+    # BatchesDelegator which is enumerable.
     #
     #   Person.in_batches.with_index do |relation, batch_index|
     #     puts "Processing relation ##{batch_index}"
     #     relation.each { |relation| relation.delete_all }
     #   end
+    #
+    # Examples of calling methods on the returned BatchesDelegator object:
+    #
+    #   Person.in_batches.delete_all
+    #   Person.in_batches.update_all(awesome: true)
+    #   Person.in_batches.each_record(&:party_all_night!)
     #
     # ==== Options
     # * <tt>:of</tt> - Specifies the size of the batch. Default to 1000.
@@ -157,9 +166,7 @@ module ActiveRecord
     # option on each worker).
     #
     #   # Let's process the next 2000 records
-    #   Person.in_batches(of: 2000, begin_at: 2000) do |relation|
-    #     relation.update_all(cool: true)
-    #   end
+    #   Person.in_batches(of: 2000, begin_at: 2000).update_all(awesome: true)
     #
     # An example of calling where query method on the relation:
     #
@@ -169,12 +176,10 @@ module ActiveRecord
     #     relation.where('age <= 21').delete_all
     #   end
     #
-    # NOTE: If you are going to iterate through each record, you should set
-    # +:load+ to true in order to reduce the number of queries. For example:
+    # NOTE: If you are going to iterate through each record, you should call
+    # #each_record on the yielded BatchesDelegator:
     #
-    #   Person.in_batches(load: true).each do |batch|
-    #     batch.each(&:party_all_night!)
-    #   end
+    #   Person.in_batches.each_record(&:party_all_night!)
     #
     # NOTE: It's not possible to set the order. That is automatically set to
     # ascending on the primary key ("id ASC") to make the batch ordering is
@@ -186,10 +191,7 @@ module ActiveRecord
     def in_batches(of: 1000, begin_at: nil, end_at: nil, load: false)
       relation = self
       unless block_given?
-        return to_enum(:in_batches, of: of, begin_at: begin_at, end_at: end_at, load: load) do
-          total = apply_limits(relation, begin_at, end_at).size
-          (total - 1).div(of) + 1
-        end
+        return BatchesDelegator.new(of: of, begin_at: begin_at, end_at: end_at, relation: self)
       end
 
       if logger && (arel.orders.present? || arel.taken.present?)
@@ -222,12 +224,6 @@ module ActiveRecord
         break if ids.length < of
         batch_relation = relation.where(table[primary_key].gt(primary_key_offset))
       end
-    end
-
-    def in_batches_delegator(of: 1000, begin_at: nil, end_at: nil)
-      delegator = BatchesDelegator.new(of: of, begin_at: begin_at, end_at: end_at, relation: self)
-      return delegator.map { |relation| yield relation } if block_given?
-      delegator
     end
 
     private
